@@ -13,6 +13,9 @@ from wtforms.validators import DataRequired, Length, Optional
 
 from flask_migrate import Migrate
 
+import csv
+import click
+
 
 app = Flask(__name__, static_folder='static')
 
@@ -22,6 +25,27 @@ app.config['SECRET_KEY'] = 'MY SECRET KEY'
 # в качестве параметра экземпляр приложения Flask:
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+
+@app.cli.command('load_opinions')
+def load_opinions_command():
+    """Функция загрузки мнений в базу данных."""
+    # Открываем файл:
+    with open('opinions.csv', encoding='utf-8') as f:
+        # Создаём итерируемый объект, который отображает каждую строку
+        # в качестве словаря с ключами из шапки файла:
+        reader = csv.DictReader(f)
+        # Для подсчёта строк добавляем счётчик:
+        counter = 0
+        for row in reader:
+            # Распакованный словарь используем
+            # для создания экземпляра модели Opinion:
+            opinion = Opinion(**row)
+            # Добавляем объект в сессию и коммитим:
+            db.session.add(opinion)
+            db.session.commit()
+            counter += 1
+    click.echo(f'Загружено мнений: {counter}')
 
 
 class Opinion(db.Model):
@@ -37,6 +61,7 @@ class Opinion(db.Model):
     # Дата и время — текущее время,
     # по этому столбцу база данных будет проиндексирована:
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    added_by = db.Column(db.String(64))
 
 
 # Класс формы опишите сразу после модели Opinion.
